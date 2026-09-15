@@ -1,0 +1,15 @@
+{
+  "name": "dota2-draft-gsi-server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local HTTP listener for Dota 2's Game State Integration draft feed.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "install-config": "node install-config.js",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  }
+}
