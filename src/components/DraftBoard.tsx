@@ -3,6 +3,7 @@ import type { Hero } from '../types';
 import { useDraft } from '../hooks/useDraft';
 import { TOTAL_STEPS } from '../data/captainsMode';
 import { rankCandidates, rankBanThreats } from '../lib/recommend';
+import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { HeroGrid } from './HeroGrid';
 import { SuggestionPanel } from './SuggestionPanel';
@@ -41,16 +42,26 @@ export function DraftBoard({ heroes, myPosition, mySideFirst, onNewDraft }: Prop
     () => heroes.filter((h) => matchesMyPosition(h.positions, myPosition)),
     [heroes, myPosition],
   );
+
+  // Real match-outcome win rates (OpenDota), anchored on whichever heroes
+  // are already on the board — cheap (a handful of fetches, not the whole
+  // pool) and feeds both the pick suggestions and the ban threats below.
+  const boardHeroIds = useMemo(
+    () => [...myPicksHeroes, ...enemyPicksHeroes].map((h) => h.id),
+    [myPicksHeroes, enemyPicksHeroes],
+  );
+  const { getMatchup } = useMatchups(boardHeroIds);
+
   const suggestions = useMemo(
-    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds),
-    [positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds],
+    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, { getMatchup }),
+    [positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, getMatchup],
   );
 
   // Backed by structural counters once there are picks to react to, and by
   // live OpenDota win rate before that — so even ban #1 has a real signal.
   const banThreats = useMemo(
-    () => rankBanThreats(heroes, myPicksHeroes, enemyPicksHeroes, draft.usedHeroIds),
-    [heroes, myPicksHeroes, enemyPicksHeroes, draft.usedHeroIds],
+    () => rankBanThreats(heroes, myPicksHeroes, enemyPicksHeroes, draft.usedHeroIds, { getMatchup }),
+    [heroes, myPicksHeroes, enemyPicksHeroes, draft.usedHeroIds, getMatchup],
   );
 
   // Auto-open the guide the moment my team locks in a hero for my position.

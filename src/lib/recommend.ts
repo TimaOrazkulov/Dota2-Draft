@@ -3,6 +3,29 @@ import { COUNTER_RULES } from '../data/counterRules';
 import { SYNERGY_RULES } from '../data/synergyRules';
 import { COMPOSITION_ASPECTS, hasAspect } from '../data/teamAspects';
 import { formatPositions } from './positions';
+import type { GetMatchup } from './matchups';
+
+const MATCHUP_WEIGHT = 0.35;
+const MATCHUP_NOTE_THRESHOLD = 4; // percentage points, to keep small-sample noise out of the text
+
+// Real match-outcome win rate for this specific pair (OpenDota), on top of
+// the structural rules above. `getMatchup` is anchored on `enemy` (that's
+// whichever heroes we've already fetched tables for), so we invert to get
+// the candidate's side: if enemy wins X% of games against candidate, the
+// candidate wins (100-X)% of those same games.
+function matchupDataTerm(candidate: Hero, enemy: Hero, getMatchup?: GetMatchup): Matchup {
+  const entry = getMatchup?.(enemy.id, candidate.id);
+  if (!entry) return { score: 0, reasons: [], risks: [] };
+
+  const candidateWinRate = 100 - entry.winRate;
+  const delta = candidateWinRate - 50;
+  const score = MATCHUP_WEIGHT * delta;
+  const note = `${enemy.localizedName} — матчап ${candidateWinRate.toFixed(0)}% WR (${entry.games} игр)`;
+
+  if (delta >= MATCHUP_NOTE_THRESHOLD) return { score, reasons: [note], risks: [] };
+  if (delta <= -MATCHUP_NOTE_THRESHOLD) return { score, reasons: [], risks: [note] };
+  return { score, reasons: [], risks: [] };
+}
 
 function ruleApplies(rule: (typeof COUNTER_RULES)[number], attacker: Hero, victim: Hero): boolean {
   if (!rule.attackerTags.some((t) => attacker.tags.includes(t))) return false;
@@ -84,9 +107,10 @@ export function rankCandidates(
   enemyPicks: Hero[],
   allyPicks: Hero[],
   excludedIds: Set<number>,
-  options: { metaWeight?: number } = {},
+  options: { metaWeight?: number; getMatchup?: GetMatchup } = {},
 ): Suggestion[] {
   const metaWeight = options.metaWeight ?? 0.3;
+  const { getMatchup } = options;
   const pool = candidates.filter((h) => !excludedIds.has(h.id));
 
   const suggestions: Suggestion[] = pool.map((hero) => {
@@ -101,6 +125,11 @@ export function rankCandidates(
       score += m.score;
       reasons.push(...m.reasons);
       risks.push(...m.risks);
+
+      const real = matchupDataTerm(hero, enemy, getMatchup);
+      score += real.score;
+      reasons.push(...real.reasons);
+      risks.push(...real.risks);
     }
 
     for (const ally of allyPicks) {
@@ -151,6 +180,7 @@ export function rankBanThreats(
   myPicks: Hero[],
   enemyPicks: Hero[],
   excludedIds: Set<number>,
+  options: { getMatchup?: GetMatchup } = {},
 ): Suggestion[] {
-  return rankCandidates(allHeroes, myPicks, enemyPicks, excludedIds, { metaWeight: 0.5 });
+  return rankCandidates(allHeroes, myPicks, enemyPicks, excludedIds, { metaWeight: 0.5, getMatchup: options.getMatchup });
 }

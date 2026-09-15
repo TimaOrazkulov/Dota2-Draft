@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Hero, TeamId } from '../types';
 import { useAllPick } from '../hooks/useAllPick';
 import { rankCandidates } from '../lib/recommend';
+import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { HeroGrid } from './HeroGrid';
 import { SuggestionPanel } from './SuggestionPanel';
@@ -34,9 +35,15 @@ export function AllPickBoard({ heroes, myPosition, onExit }: Props) {
     () => heroes.filter((h) => matchesMyPosition(h.positions, myPosition)),
     [heroes, myPosition],
   );
+  const boardHeroIds = useMemo(
+    () => [...myPicksHeroes, ...enemyPicksHeroes].map((h) => h.id),
+    [myPicksHeroes, enemyPicksHeroes],
+  );
+  const { getMatchup } = useMatchups(boardHeroIds);
+
   const suggestions = useMemo(
-    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds),
-    [positionPool, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds],
+    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds, { getMatchup }),
+    [positionPool, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds, getMatchup],
   );
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Hero } from '../types';
 import { useGsiDraft } from '../hooks/useGsiDraft';
 import { rankCandidates, rankBanThreats } from '../lib/recommend';
+import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { SuggestionPanel } from './SuggestionPanel';
 import { GuidePanel } from './GuidePanel';
@@ -45,13 +46,19 @@ export function GsiBoard({ heroes, myPosition, myIsRadiant, onExit }: Props) {
     () => heroes.filter((h) => matchesMyPosition(h.positions, myPosition)),
     [heroes, myPosition],
   );
+  const boardHeroIds = useMemo(
+    () => [...myPicksHeroes, ...enemyPicksHeroes].map((h) => h.id),
+    [myPicksHeroes, enemyPicksHeroes],
+  );
+  const { getMatchup } = useMatchups(boardHeroIds);
+
   const suggestions = useMemo(
-    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds),
-    [positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds],
+    () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds, { getMatchup }),
+    [positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds, getMatchup],
   );
   const banThreats = useMemo(
-    () => rankBanThreats(heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds),
-    [heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds],
+    () => rankBanThreats(heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds, { getMatchup }),
+    [heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds, getMatchup],
   );
 
   // Auto-open the guide the moment my team locks in a hero for my position.
