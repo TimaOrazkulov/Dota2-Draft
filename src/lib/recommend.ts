@@ -40,21 +40,45 @@ interface Matchup {
   risks: string[];
 }
 
+// Cap how many separate rules against the SAME hero stack into the score.
+// A hero with many overlapping structural weaknesses (e.g. summons +
+// push-lane + melee-no-gapcloser, like Meepo) is a legitimately bigger
+// threat than one with a single weakness, but without a cap it can rack up
+// 3-4 matching rules at once and dwarf every other hero on the board —
+// which in practice meant ban suggestions fixated on "protect the one hero
+// with many tags" turn after turn, ignoring newer, more relevant threats.
+// Capping to the top-2 highest-weight matches keeps the signal (still scores
+// higher than a single-weakness hero) without letting it swamp everything
+// else. Display keeps every matching reason, just the number feeding the
+// score is capped.
+const MAX_STACKED_RULES_PER_HERO = 2;
+
+function topWeightSum(weights: number[]): number {
+  return weights
+    .slice()
+    .sort((a, b) => b - a)
+    .slice(0, MAX_STACKED_RULES_PER_HERO)
+    .reduce((sum, w) => sum + w, 0);
+}
+
 function matchupAgainst(candidate: Hero, enemy: Hero): Matchup {
-  let score = 0;
+  const reasonWeights: number[] = [];
+  const riskWeights: number[] = [];
   const reasons: string[] = [];
   const risks: string[] = [];
 
   for (const rule of COUNTER_RULES) {
     if (ruleApplies(rule, candidate, enemy)) {
-      score += rule.weight;
+      reasonWeights.push(rule.weight);
       reasons.push(rule.reason(enemy.localizedName));
     }
     if (ruleApplies(rule, enemy, candidate)) {
-      score -= rule.weight * 0.8;
+      riskWeights.push(rule.weight * 0.8);
       risks.push(rule.reason(enemy.localizedName));
     }
   }
+
+  const score = topWeightSum(reasonWeights) - topWeightSum(riskWeights);
 
   return { score, reasons, risks };
 }

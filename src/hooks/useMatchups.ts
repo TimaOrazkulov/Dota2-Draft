@@ -17,19 +17,32 @@ export function useMatchups(anchorHeroIds: number[]): { getMatchup: GetMatchup }
     for (const id of toLoad) requestedRef.current.add(id);
 
     let cancelled = false;
-    Promise.all(toLoad.map((id) => getHeroMatchups(id).then((m) => [id, m] as const)))
-      .then((results) => {
-        if (cancelled) return;
-        setTables((prev) => {
-          const next = new Map(prev);
-          for (const [id, m] of results) next.set(id, m);
-          return next;
-        });
-      })
-      .catch(() => {
-        // Network hiccup or rate limit — matchup term just won't contribute
-        // for these heroes; structural rules and meta win rate still do.
+    // allSettled, not all: one slow/failing hero shouldn't discard the
+    // successful fetches for every other hero in the same batch.
+    Promise.allSettled(
+      toLoad.map((id) => getHeroMatchups(id).then((m): [number, Map<number, MatchupEntry>] => [id, m])),
+    ).then((results) => {
+      if (cancelled) return;
+      const loaded: [number, Map<number, MatchupEntry>][] = [];
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          loaded.push(result.value);
+        } else {
+          // Network hiccup, rate limit, or the 20s cap tripped — matchup
+          // term just won't contribute for this hero this time (structural
+          // rules and meta win rate still do). Un-mark it as requested so
+          // the next render with a changed anchor list gets another try,
+          // instead of silently giving up for the rest of the session.
+          requestedRef.current.delete(toLoad[i]);
+        }
       });
+      if (loaded.length === 0) return;
+      setTables((prev) => {
+        const next = new Map(prev);
+        for (const [id, m] of loaded) next.set(id, m);
+        return next;
+      });
+    });
 
     return () => {
       cancelled = true;

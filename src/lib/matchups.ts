@@ -35,7 +35,17 @@ export async function getHeroMatchups(heroId: number): Promise<Map<number, Match
     // ignore corrupt cache
   }
 
-  const res = await fetch(`https://api.opendota.com/api/heroes/${heroId}/matchups`);
+  // This endpoint is noticeably heavier than heroStats: a normal response
+  // routinely takes several seconds to tens of seconds, and it occasionally
+  // spikes into the 100s+ range (observed a 524 gateway timeout after
+  // 125s). 12s cut off plenty of otherwise-fine slow responses; 20s covers
+  // the normal range while still capping the pathological tail so a bad
+  // response degrades to "no matchup data for this hero" instead of hanging.
+  // The fetch itself is never on the UI's critical path (see useMatchups),
+  // so a longer cap here doesn't block anything the user is looking at.
+  const res = await fetch(`https://api.opendota.com/api/heroes/${heroId}/matchups`, {
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!res.ok) throw new Error(`OpenDota matchups request failed: ${res.status}`);
   const raw = (await res.json()) as OpenDotaMatchup[];
 
