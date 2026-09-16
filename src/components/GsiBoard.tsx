@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Hero } from '../types';
 import { useGsiDraft } from '../hooks/useGsiDraft';
-import { rankCandidates, rankBanThreats } from '../lib/recommend';
+import { rankCandidates, rankBanThreats, rankCandidatesByPosition } from '../lib/recommend';
+import { MAX_BAN_SLOTS } from '../data/captainsMode';
 import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { SuggestionPanel } from './SuggestionPanel';
+import { SuggestionCategories } from './SuggestionCategories';
 import { GuidePanel } from './GuidePanel';
 import { TopBar } from './TopBar';
-import { matchesMyPosition, positionPanelTitle } from '../lib/positions';
+import { ANY_POSITION, matchesMyPosition, positionPanelTitle } from '../lib/positions';
 
 interface Props {
   heroes: Hero[];
@@ -16,7 +18,7 @@ interface Props {
   onExit: () => void;
 }
 
-const BAN_SLOTS = 6;
+const BAN_SLOTS = MAX_BAN_SLOTS;
 const PICK_SLOTS = 5;
 
 export function GsiBoard({ heroes, myPosition, myIsRadiant, onExit }: Props) {
@@ -56,6 +58,10 @@ export function GsiBoard({ heroes, myPosition, myIsRadiant, onExit }: Props) {
     () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds, { getMatchup }),
     [positionPool, enemyPicksHeroes, myPicksHeroes, usedHeroIds, getMatchup],
   );
+  const byPosition = useMemo(() => {
+    if (myPosition !== ANY_POSITION) return null;
+    return rankCandidatesByPosition(heroes, enemyPicksHeroes, myPicksHeroes, usedHeroIds, { getMatchup });
+  }, [myPosition, heroes, enemyPicksHeroes, myPicksHeroes, usedHeroIds, getMatchup]);
   const banThreats = useMemo(
     () => rankBanThreats(heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds, { getMatchup }),
     [heroes, myPicksHeroes, enemyPicksHeroes, usedHeroIds, getMatchup],
@@ -112,7 +118,11 @@ export function GsiBoard({ heroes, myPosition, myIsRadiant, onExit }: Props) {
         />
       </div>
 
-      {isMyTurn && currentAction === 'pick' && (
+      {isMyTurn && currentAction === 'pick' && byPosition && (
+        <SuggestionCategories byPosition={byPosition} onPick={setGuideHeroId} actionLabel="Посмотреть гайд" />
+      )}
+
+      {isMyTurn && currentAction === 'pick' && !byPosition && (
         <SuggestionPanel
           suggestions={suggestions}
           onPick={setGuideHeroId}

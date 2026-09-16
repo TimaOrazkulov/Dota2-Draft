@@ -4,7 +4,7 @@ import { HERO_POSITION_OVERLAY } from '../data/heroPositions';
 
 const OPENDOTA_HEROSTATS_URL = 'https://api.opendota.com/api/heroStats';
 const IMG_BASE = 'https://cdn.cloudflare.steamstatic.com';
-const CACHE_KEY = 'dota-draft:heroes-cache-v5';
+const CACHE_KEY = 'dota-draft:heroes-cache-v6';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 interface OpenDotaHero {

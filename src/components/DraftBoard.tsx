@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Hero } from '../types';
 import { useDraft } from '../hooks/useDraft';
-import { TOTAL_STEPS } from '../data/captainsMode';
-import { rankCandidates, rankBanThreats } from '../lib/recommend';
+import { TOTAL_STEPS, MAX_BAN_SLOTS } from '../data/captainsMode';
+import { rankCandidates, rankBanThreats, rankCandidatesByPosition } from '../lib/recommend';
 import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { HeroGrid } from './HeroGrid';
 import { SuggestionPanel } from './SuggestionPanel';
+import { SuggestionCategories } from './SuggestionCategories';
 import { GuidePanel } from './GuidePanel';
 import { TopBar } from './TopBar';
-import { matchesMyPosition, positionPanelTitle } from '../lib/positions';
+import { ANY_POSITION, matchesMyPosition, positionPanelTitle } from '../lib/positions';
 
 interface Props {
   heroes: Hero[];
@@ -18,7 +19,7 @@ interface Props {
   onNewDraft: () => void;
 }
 
-const BAN_SLOTS = 6;
+const BAN_SLOTS = MAX_BAN_SLOTS;
 const PICK_SLOTS = 5;
 
 export function DraftBoard({ heroes, myPosition, mySideFirst, onNewDraft }: Props) {
@@ -56,6 +57,11 @@ export function DraftBoard({ heroes, myPosition, mySideFirst, onNewDraft }: Prop
     () => rankCandidates(positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, { getMatchup }),
     [positionPool, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, getMatchup],
   );
+
+  const byPosition = useMemo(() => {
+    if (myPosition !== ANY_POSITION) return null;
+    return rankCandidatesByPosition(heroes, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, { getMatchup });
+  }, [myPosition, heroes, enemyPicksHeroes, myPicksHeroes, draft.usedHeroIds, getMatchup]);
 
   // Backed by structural counters once there are picks to react to, and by
   // live OpenDota win rate before that — so even ban #1 has a real signal.
@@ -114,7 +120,11 @@ export function DraftBoard({ heroes, myPosition, mySideFirst, onNewDraft }: Prop
         />
       </div>
 
-      {!draft.isComplete && step?.team === 'my' && step.action === 'pick' && (
+      {!draft.isComplete && step?.team === 'my' && step.action === 'pick' && byPosition && (
+        <SuggestionCategories byPosition={byPosition} onPick={draft.pickOrBan} />
+      )}
+
+      {!draft.isComplete && step?.team === 'my' && step.action === 'pick' && !byPosition && (
         <SuggestionPanel
           suggestions={suggestions}
           onPick={draft.pickOrBan}

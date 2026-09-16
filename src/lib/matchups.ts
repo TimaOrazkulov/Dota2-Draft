@@ -1,4 +1,4 @@
-const CACHE_PREFIX = 'dota-draft:matchups-v1:';
+const CACHE_PREFIX = 'dota-draft:matchups-v2:';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 const MIN_MATCHUP_SAMPLE = 20;
 

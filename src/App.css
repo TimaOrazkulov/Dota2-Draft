@@ -306,7 +306,7 @@
 }
 .team-column__bans {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 6px;
 }
 .team-column__picks {
@@ -480,6 +480,13 @@
 }
 .hero-grid__item .hero-badge img {
   transition: transform 0.12s, box-shadow 0.12s;
+}
+
+/* Suggestion categories (All Pick, "любая позиция") */
+.suggestion-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Suggestion panel */

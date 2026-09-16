@@ -2,7 +2,7 @@ import type { Hero, Suggestion } from '../types';
 import { COUNTER_RULES } from '../data/counterRules';
 import { SYNERGY_RULES } from '../data/synergyRules';
 import { COMPOSITION_ASPECTS, hasAspect } from '../data/teamAspects';
-import { formatPositions } from './positions';
+import { formatPositions, POSITION_OPTIONS } from './positions';
 import type { GetMatchup } from './matchups';
 
 const MATCHUP_WEIGHT = 0.35;
@@ -162,6 +162,35 @@ export function rankCandidates(
   });
 
   return suggestions.sort((a, b) => b.score - a.score);
+}
+
+export interface PositionSuggestions {
+  position: number;
+  suggestions: Suggestion[];
+}
+
+// "Любая позиция" means the candidate pool isn't narrowed to one role — a
+// single flat ranking would just be whoever scores highest overall, usually
+// all carries. This ranks each position (1-5) separately so a good
+// support/offlaner/etc pick surfaces too, instead of being buried under
+// carries. Used by all three boards whenever the user picked "any position".
+export function rankCandidatesByPosition(
+  allHeroes: Hero[],
+  enemyPicks: Hero[],
+  allyPicks: Hero[],
+  excludedIds: Set<number>,
+  options: { getMatchup?: GetMatchup } = {},
+): PositionSuggestions[] {
+  return POSITION_OPTIONS.map((position) => ({
+    position,
+    suggestions: rankCandidates(
+      allHeroes.filter((h) => h.positions.includes(position)),
+      enemyPicks,
+      allyPicks,
+      excludedIds,
+      options,
+    ),
+  }));
 }
 
 // Ban-phase framing: which available heroes are the biggest threat to ban

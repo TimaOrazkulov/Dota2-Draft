@@ -13,6 +13,8 @@ interface Props {
   emptyText?: string;
   actionLabel?: string;
   labels?: GroupLabels;
+  limit?: number;
+  hidePositionLabel?: boolean;
 }
 
 const DEFAULT_LABELS: GroupLabels = {
@@ -28,8 +30,10 @@ export function SuggestionPanel({
   emptyText = 'Нет доступных героев.',
   actionLabel,
   labels = DEFAULT_LABELS,
+  limit = 8,
+  hidePositionLabel = false,
 }: Props) {
-  const top = suggestions.slice(0, 5);
+  const top = suggestions.slice(0, limit);
   const maxScore = Math.max(1, ...top.map((s) => Math.abs(s.score)));
 
   return (
@@ -52,7 +56,9 @@ export function SuggestionPanel({
                   <span className="suggestion-card__name">{s.hero.localizedName}</span>
                   <span className="suggestion-card__score">{s.score.toFixed(1)}</span>
                 </div>
-                {s.positionLabel && <div className="suggestion-card__position">{s.positionLabel}</div>}
+                {!hidePositionLabel && s.positionLabel && (
+                  <div className="suggestion-card__position">{s.positionLabel}</div>
+                )}
                 <div className="suggestion-card__bar-track">
                   <div className="suggestion-card__bar-fill" style={{ width: `${barPct}%` }} />
                 </div>

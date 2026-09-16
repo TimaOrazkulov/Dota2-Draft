@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Hero, TeamId } from '../types';
 import { useAllPick } from '../hooks/useAllPick';
-import { rankCandidates } from '../lib/recommend';
+import { rankCandidates, rankCandidatesByPosition } from '../lib/recommend';
 import { useMatchups } from '../hooks/useMatchups';
 import { TeamColumn } from './TeamColumn';
 import { HeroGrid } from './HeroGrid';
 import { SuggestionPanel } from './SuggestionPanel';
+import { SuggestionCategories } from './SuggestionCategories';
 import { GuidePanel } from './GuidePanel';
 import { TopBar } from './TopBar';
-import { matchesMyPosition, positionPanelTitle } from '../lib/positions';
+import { ANY_POSITION, matchesMyPosition, positionPanelTitle } from '../lib/positions';
 
 interface Props {
   heroes: Hero[];
@@ -46,6 +47,11 @@ export function AllPickBoard({ heroes, myPosition, onExit }: Props) {
     [positionPool, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds, getMatchup],
   );
 
+  const byPosition = useMemo(() => {
+    if (myPosition !== ANY_POSITION) return null;
+    return rankCandidatesByPosition(heroes, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds, { getMatchup });
+  }, [myPosition, heroes, enemyPicksHeroes, myPicksHeroes, ap.usedHeroIds, getMatchup]);
+
   useEffect(() => {
     const lastMine = [...ap.my].reverse().find((id) => matchesMyPosition(heroById.get(id)?.positions ?? [], myPosition));
     if (lastMine != null) setGuideHeroId(lastMine);
@@ -61,6 +67,8 @@ export function AllPickBoard({ heroes, myPosition, onExit }: Props) {
     if (target === 'my' && ap.my.length + 1 >= ap.maxPicks && !enemyFull) setTarget('enemy');
     else if (target === 'enemy' && ap.enemy.length + 1 >= ap.maxPicks && !myFull) setTarget('my');
   };
+
+  const pickHeroById = (heroId: number) => handleSelect(heroById.get(heroId) as Hero);
 
   return (
     <div className="draft-board">
@@ -101,10 +109,12 @@ export function AllPickBoard({ heroes, myPosition, onExit }: Props) {
         />
       </div>
 
-      {!myFull && (
+      {!myFull && byPosition && <SuggestionCategories byPosition={byPosition} onPick={pickHeroById} />}
+
+      {!myFull && !byPosition && (
         <SuggestionPanel
           suggestions={suggestions}
-          onPick={(heroId) => handleSelect(heroById.get(heroId) as Hero)}
+          onPick={pickHeroById}
           title={`Топ героев на ${positionPanelTitle(myPosition)} для моей команды`}
           emptyText="Нет доступных героев."
         />
